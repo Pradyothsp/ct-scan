@@ -1,0 +1,29 @@
+/* Reset some default styles */
+body, h1, h2, p, div, svg {
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4; /* Set your desired background color */
+}
+
+#contourMap {
+    margin: 20px auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 70vh; /* Adjust the height as needed */
+}
+
+svg {
+    display: block;
+    margin: 0 auto;
+}
+
+input {
+    display: block;
+    margin: 20px auto;
+    padding: 5px; /* Adjust the padding as needed */
+}
