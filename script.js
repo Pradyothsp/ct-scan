@@ -1,48 +1,72 @@
-function Load(bin_counts) {
-    // Load data
+function Load(binCounts) {
     d3.csv("data/Data_CT.csv").then(function (data) {
-        // Extract the 'values_T' column from your data
-        const values_T = data.map(d => +d[Object.keys(d)[0]]); // Convert to a numeric value if needed
+        // Extract the 'values_T' column from the data
+        const values_T = data.map(d => +d[Object.keys(d)[0]]);
 
-        console.log(values_T);
+        // Set up SVG dimensions and margins
+        const width = 800;
+        const height = 600;
+        const m = 512;
+        const numRows = 500;
 
-        // Set dimensions for the visualization
-        const width = 800; // replace with your desired width
-        const height = 600; // replace with your desired height
+        // Compute the minimum, maximum, and mid values of the data
+        const min = d3.min(values_T);
+        const max = d3.max(values_T);
+        const mid = (min + max) / 2;
 
-        const m = 512; // number of columns
-        const n = 500; // number of rows
-        const min = d3.min(values_T); // minimum value
-        const max = d3.max(values_T); // maximum value
-        console.log(max)
-        // let bin_counts = bin_counts; // number of contours
-        const someStep = 1; // step size for slider
-        const mid = (min + max) / 4; // mid value
+        let colors = d3.scaleLinear()
+            .domain(d3.range(min, max, parseInt(Math.abs(max - min) / 6.7)))
+            .range(["#ffffff", "#3e5ebc", "#2b83ba", "#abdda6", "#fdae61", "#d7191c"])
+            .interpolate(d3.interpolateHcl);
 
-        // Create SVG container for the visualization
-        const svg = d3.select("#contourMap")
-            .append("svg")
+        // Create SVG container
+        const svg = d3.select("#contourMap").append("svg")
             .attr("width", width)
             .attr("height", height);
 
-        // Add a slider
-        const slider = d3.select("body").append("input")
-            .attr("type", "range")
-            .attr("min", 0)
-            .attr("max", 1000)
-            .attr("step", someStep)
-            .on("input", update);
+        // Set up margin and dimensions for the slider
+        const margin = 20;
+        const sliderWidth = width - margin * 2;
+        const sliderHeight = 60;
+
+        var x = d3.scaleLinear()
+            .domain([min, max])
+            .range([0, sliderWidth]);
+
+        var brush = d3.brushX()
+            .extent([[0, 0], [sliderWidth, sliderHeight]])
+            .on("brush", brushed);
+
+        // Create the slider
+        var slider = d3.select("body").append("svg")
+            .attr("width", sliderWidth + margin * 2)
+            .attr("height", sliderHeight + margin)
+            .append("g")
+            .attr("transform", "translate(" + margin + "," + margin + ")")
+            .call(d3.axisBottom().scale(x).ticks(5));
+
+        // Create the brush
+        var brushg = slider.append("g")
+            .attr("class", "brush")
+            .call(brush);
+
+        brush.move(brushg, [20, 50].map(x));
 
         // Function to update visualization based on slider value
-        function update() {
-            const sliderValue = +slider.property("value");
-            // Update contours based on the slider value
+        function brushed() {
+            var range = d3.brushSelection(this).map(x.invert);
+            update(range[0], range[1]);
+        }
+
+        // Function to update visualization based on slider value
+        function update(newMin, newMax) {
             const contours = d3.contours()
-                .size([m, n])
-                .thresholds(d3.range(min, max, sliderValue))
+                .size([m, numRows])
+                .thresholds(d3.range(newMin, newMax, binCounts))
                 (values_T);
+
             svg.selectAll("path").remove();
-            // Update visualization using updatedContours
+
             svg.selectAll("path")
                 .data(contours)
                 .enter().append("path")
@@ -51,30 +75,14 @@ function Load(bin_counts) {
         }
 
         // Create contours
-        const contours = d3.contours()
-            .size([m, n])
-            .thresholds(d3.range(min, max, bin_counts))
+        const initialContours = d3.contours()
+            .size([m, numRows])
+            .thresholds(d3.range(min, max, binCounts))
             (values_T);
 
-        console.log(contours);
-
-
-        // Sample color scale
-        const colorScale = d3.scaleDiverging()
-            .domain([min, mid, max])
-            .interpolator(d3.interpolateBuGn);
-
-        let colors = d3.scaleLinear()
-            .domain(d3.range(min, max,
-                parseInt(Math.abs(max - min) / 6.7)))
-            .range(["#ffffff", "#3e5ebc", "#2b83ba",
-                "#abdda6", "#fdae61", "#d7191c"])
-            .interpolate(d3.interpolateHcl);
-
-
-        // Apply color to contours
+        // Create visualization using initialContours
         svg.selectAll("path")
-            .data(contours)
+            .data(initialContours)
             .enter().append("path")
             .attr("d", d3.geoPath())
             .attr("fill", d => colors(d.value));
